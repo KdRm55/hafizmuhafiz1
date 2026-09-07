@@ -500,7 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Sure Başlığı
         const surah = QURAN_DATA.getSurahByPage ? QURAN_DATA.getSurahByPage(pageNumber) : (QURAN_DATA.surahs.find(s => pageNumber >= s.startPage) || QURAN_DATA.surahs[0]);
         if (mushafSurahTitle && surah) {
-            mushafSurahTitle.textContent = surah.nameAr ? `سُورَةُ ${surah.nameAr} (${surah.nameTr})` : `${surah.nameTr} Suresi`;
+            mushafSurahTitle.textContent = QURAN_DATA.formatSurahTitle(surah.nameAr, surah.nameTr, surah.id);
         }
 
         // 1. Taranmış Mushaf Görseli / Diyanet Resmi PDF Render
@@ -768,7 +768,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Başlıkta sure adı
         if (mushafSurahTitle && ayahs[0]) {
-            mushafSurahTitle.textContent = ayahs[0].surahNameAr ? `سُورَةُ ${ayahs[0].surahNameAr} (${ayahs[0].surahNameTr})` : `${ayahs[0].surahNameTr} Suresi`;
+            const sId = ayahs[0].surahNumber || (ayahs[0].surah ? ayahs[0].surah.number : null);
+            mushafSurahTitle.textContent = QURAN_DATA.formatSurahTitle(ayahs[0].surahNameAr, ayahs[0].surahNameTr, sId);
         }
 
         const totalLines = 15;
@@ -973,98 +974,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeAyahMeal) activeAyahMeal.textContent = ayah.translationTr || 'Diyanet Meali yüklenemedi.';
     }
 
-    let lastTrackedLineIndex = -1;
-
     /**
-     * YouTube Mukabele Tarzı Canlı Yeşil Takip Üçgenini Okunan Kelime/Satır Altına Akıcı Şekilde Konumlandırır
+     * Takip İbresi Kaldırıldı (Kullanıcı Talebi)
      */
-    function updateMukabeleTracker(ayahIndex, progress = 0, isVisible = true, activeWordIndex = -1, activeWordProgress = 0) {
-        const pointer = mushafAudioPointer || document.getElementById('mushaf-audio-pointer');
-        if (!pointer) return;
-        if (!isVisible) {
-            pointer.style.display = 'none';
-            return;
-        }
-        pointer.style.display = 'flex';
-
-        const overlay = mushafInteractiveOverlay || document.getElementById('mushaf-interactive-overlay');
-        if (!overlay) return;
-
-        let activeLineIndex = 0;
-        let lineRatio = 0;
-
-        const ayahWords = (state.ayahWordsMap && state.ayahWordsMap[ayahIndex]) || [];
-
-        // 1. Milisaniye Seviyesinde Kelime Senkronizasyonu (Kâri ile Birebir Canlı Eşzamanlama)
-        if (activeWordIndex >= 0 && ayahWords.length > 0) {
-            const clampedWordIdx = Math.max(0, Math.min(ayahWords.length - 1, activeWordIndex));
-            const wordInfo = ayahWords[clampedWordIdx];
-            if (wordInfo) {
-                activeLineIndex = wordInfo.lineIndex;
-                const intraProg = Math.max(0, Math.min(1, activeWordProgress || 0));
-                // Kelime içinde Arapça sağdan sola tecvid akışı:
-                if (wordInfo.startRatio !== undefined && wordInfo.endRatio !== undefined) {
-                    lineRatio = wordInfo.startRatio + (intraProg * (wordInfo.endRatio - wordInfo.startRatio));
-                } else {
-                    lineRatio = wordInfo.ratio;
-                }
-            }
-        } else {
-            // 2. Yedek: Ayet parçaları üzerinden akıcı hesap
-            const subSpans = (state.ayahSpans && state.ayahSpans[ayahIndex]) || [];
-            if (subSpans.length > 0) {
-                const clampedProgress = Math.max(0, Math.min(0.999, progress));
-                let cumWeight = 0;
-                let activeSpan = subSpans[0];
-                let spanProgress = 0;
-
-                for (let s = 0; s < subSpans.length; s++) {
-                    const span = subSpans[s];
-                    const nextCum = cumWeight + span.weight;
-                    if (clampedProgress <= nextCum || s === subSpans.length - 1) {
-                        activeSpan = span;
-                        const spanRange = span.weight > 0 ? span.weight : (1 / subSpans.length);
-                        spanProgress = Math.max(0, Math.min(1, (clampedProgress - cumWeight) / spanRange));
-                        break;
-                    }
-                    cumWeight = nextCum;
-                }
-
-                activeLineIndex = activeSpan.lineIndex;
-                lineRatio = activeSpan.startRatio + (spanProgress * (activeSpan.endRatio - activeSpan.startRatio));
-            } else {
-                const totalAyahs = (state.pageAyahs && state.pageAyahs.length > 0) ? state.pageAyahs.length : 1;
-                activeLineIndex = Math.min(14, Math.floor((ayahIndex / totalAyahs) * 15));
-                lineRatio = progress;
-            }
-        }
-
-        const targetLine = overlay.querySelector(`.ayah-overlay-line[data-line-index="${activeLineIndex}"]`);
-        if (targetLine) {
-            const frame = overlay.parentElement;
-            const frameRect = frame ? frame.getBoundingClientRect() : overlay.getBoundingClientRect();
-            const lineRect = targetLine.getBoundingClientRect();
-
-            const lineLeft = lineRect.left - frameRect.left;
-            const lineTop = lineRect.top - frameRect.top;
-            const lineWidth = lineRect.width;
-            const lineHeight = lineRect.height;
-
-            // 20px üçgen için Arapça sağdan sola doğru piksel pozisyonu:
-            const usableWidth = Math.max(20, lineWidth - 20);
-            const posX = lineLeft + (usableWidth * (1 - lineRatio)) - 2;
-            // Ayetin hemen altında, harflerle çakışmayan, net ve estetik mesafeli ibre ucu (satır tabanının hemen altı):
-            const posY = lineTop + (lineHeight * 0.98);
-
-            if (lastTrackedLineIndex !== -1 && lastTrackedLineIndex !== activeLineIndex) {
-                pointer.style.transition = 'none';
-            } else {
-                pointer.style.transition = 'transform 0.03s linear';
-            }
-            lastTrackedLineIndex = activeLineIndex;
-
-            pointer.style.transform = `translate3d(${posX}px, ${posY}px, 0)`;
-        }
+    function updateMukabeleTracker() {
+        const pointer = document.getElementById('mushaf-audio-pointer');
+        if (pointer) pointer.style.display = 'none';
     }
 
     function toggleSpreadMode() {

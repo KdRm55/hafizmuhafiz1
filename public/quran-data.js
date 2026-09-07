@@ -79,7 +79,7 @@ const QURAN_DATA = {
         { id: 37, nameAr: "الصافات", nameTr: "Sâffât", ayahs: 182, startPage: 446 },
         { id: 38, nameAr: "ص", nameTr: "Sâd", ayahs: 88, startPage: 453 },
         { id: 39, nameAr: "الزمر", nameTr: "Zümer", ayahs: 75, startPage: 458 },
-        { id: 40, nameAr: "غافر", nameTr: "Mü'min (Gâfir)", ayahs: 85, startPage: 467 },
+        { id: 40, nameAr: "غافر", nameTr: "Mü'min", ayahs: 85, startPage: 467 },
         { id: 41, nameAr: "فصلت", nameTr: "Fussilet", ayahs: 54, startPage: 477 },
         { id: 42, nameAr: "الشورى", nameTr: "Şûrâ", ayahs: 53, startPage: 483 },
         { id: 43, nameAr: "الزخرف", nameTr: "Zuhruf", ayahs: 89, startPage: 489 },
@@ -106,7 +106,7 @@ const QURAN_DATA = {
         { id: 64, nameAr: "التغابن", nameTr: "Teğâbün", ayahs: 18, startPage: 556 },
         { id: 65, nameAr: "الطلاق", nameTr: "Talâk", ayahs: 12, startPage: 558 },
         { id: 66, nameAr: "التحريم", nameTr: "Tahrîm", ayahs: 12, startPage: 560 },
-        { id: 67, nameAr: "الملك", nameTr: "Mülk (Tebâreke)", ayahs: 30, startPage: 562 },
+        { id: 67, nameAr: "الملك", nameTr: "Mülk", ayahs: 30, startPage: 562 },
         { id: 68, nameAr: "القلم", nameTr: "Kalem", ayahs: 52, startPage: 564 },
         { id: 69, nameAr: "الحاقة", nameTr: "Hâkka", ayahs: 52, startPage: 566 },
         { id: 70, nameAr: "المعارج", nameTr: "Meâric", ayahs: 44, startPage: 568 },
@@ -117,7 +117,7 @@ const QURAN_DATA = {
         { id: 75, nameAr: "القيامة", nameTr: "Kıyâme", ayahs: 40, startPage: 577 },
         { id: 76, nameAr: "الإنسان", nameTr: "İnsân", ayahs: 31, startPage: 578 },
         { id: 77, nameAr: "المرسلات", nameTr: "Mürselât", ayahs: 50, startPage: 580 },
-        { id: 78, nameAr: "النبإ", nameTr: "Nebe' (Amme)", ayahs: 40, startPage: 582 },
+        { id: 78, nameAr: "النبإ", nameTr: "Nebe'", ayahs: 40, startPage: 582 },
         { id: 79, nameAr: "النازعات", nameTr: "Nâziât", ayahs: 46, startPage: 583 },
         { id: 80, nameAr: "عبس", nameTr: "Abese", ayahs: 42, startPage: 585 },
         { id: 81, nameAr: "التكوير", nameTr: "Tekvîr", ayahs: 29, startPage: 586 },
@@ -150,15 +150,53 @@ const QURAN_DATA = {
         { id: 108, nameAr: "الكوثر", nameTr: "Kevser", ayahs: 3, startPage: 602 },
         { id: 109, nameAr: "الكافرون", nameTr: "Kâfirûn", ayahs: 6, startPage: 603 },
         { id: 110, nameAr: "النصر", nameTr: "Nasr", ayahs: 3, startPage: 603 },
-        { id: 111, nameAr: "المسد", nameTr: "Mesed (Tebbet)", ayahs: 5, startPage: 603 },
+        { id: 111, nameAr: "المسد", nameTr: "Tebbet", ayahs: 5, startPage: 603 },
         { id: 112, nameAr: "الإخلاص", nameTr: "İhlâs", ayahs: 4, startPage: 604 },
         { id: 113, nameAr: "الفلق", nameTr: "Felak", ayahs: 5, startPage: 604 },
         { id: 114, nameAr: "الناس", nameTr: "Nâs", ayahs: 6, startPage: 604 }
     ],
 
     getSurah(surahNumber) {
-        const id = parseInt(surahNumber);
+        const id = parseInt(surahNumber, 10);
         return this.surahs.find(s => s.id === id) || { id, nameTr: `${id}. Sure`, nameAr: "" };
+    },
+
+    getSurahByPage(pageNumber) {
+        const page = parseInt(pageNumber, 10) || 1;
+        let found = this.surahs[0];
+        for (let i = 0; i < this.surahs.length; i++) {
+            if (this.surahs[i].startPage <= page) {
+                found = this.surahs[i];
+            } else {
+                break;
+            }
+        }
+        return found;
+    },
+
+    formatSurahTitle(nameAr, nameTr, surahNumber = null) {
+        let sInfo = null;
+        if (surahNumber) {
+            sInfo = this.getSurah(surahNumber);
+        }
+
+        let ar = (nameAr || (sInfo ? sInfo.nameAr : '') || '').trim();
+        // Remove repeated Arabic "Surah" / "Suratu" / "Suraton" prefixes
+        const surahPrefixRegex = /^[\s\u064B-\u065F\(\[\{]*(?:س[\u064B-\u065F]*و[\u064B-\u065F]*ر[\u064B-\u065F]*[ةه][\u064B-\u065F]*)\s*/u;
+        while (surahPrefixRegex.test(ar)) {
+            ar = ar.replace(surahPrefixRegex, '').trim();
+        }
+        ar = ar.replace(/^[\(\[\{]/, '').replace(/[\)\]\}]$/, '').trim();
+
+        let tr = (sInfo ? sInfo.nameTr : (nameTr || '')).trim();
+        tr = tr.replace(/\s+Suresi$/i, '').replace(/^\(/, '').replace(/\)$/, '').trim();
+
+        const arFormatted = ar ? `سُورَةُ ${ar}` : '';
+        if (arFormatted && tr) {
+            return `${arFormatted} (${tr} Suresi)`;
+        }
+        if (arFormatted) return arFormatted;
+        return tr ? `${tr} Suresi` : '';
     },
 
     // Sayfa numarasına göre hangi cüze ait olduğunu bulma

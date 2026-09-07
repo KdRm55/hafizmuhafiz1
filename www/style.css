@@ -1416,28 +1416,6 @@ body {
     outline: none !important;
 }
 
-/* Mukabele Tarzı Canlı Kelime / Ayet Takip Üçgeni */
-.mukabele-tracker-triangle {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 18px;
-    height: 20px;
-    z-index: 35;
-    pointer-events: none;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    transform: translate3d(0, 0, 0);
-    will-change: transform;
-}
-
-.mukabele-tracker-triangle .mukabele-triangle-svg {
-    width: 16px;
-    height: 18px;
-    display: block;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
-}
 
 /* Hafızlık Ezber / Perdeleme Maskesi */
 .mushaf-mask-layer {
