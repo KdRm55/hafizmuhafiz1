@@ -339,7 +339,15 @@ document.addEventListener('DOMContentLoaded', () => {
             headerReciterName.textContent = window.audioEngine.currentReciter.name.replace(/\s*\(.*?\)\s*/g, '');
         }
         updateHeaderStats();
-        showDashboard();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const pageParam = parseInt(urlParams.get('page') || window.location.hash.replace('#', ''), 10);
+        if (pageParam && pageParam >= 1 && pageParam <= 604) {
+            loadPageData(pageParam);
+            showWorkspace('ham');
+        } else {
+            showDashboard();
+        }
     }
 
     function registerServiceWorker() {
@@ -721,12 +729,26 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchPageWordsLayout(pageNumber) {
         if (state.pageLayoutCache[pageNumber]) return state.pageLayoutCache[pageNumber];
         try {
+            const cached = localStorage.getItem(`mushaf_layout_p${pageNumber}`);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+                    state.pageLayoutCache[pageNumber] = parsed;
+                    return parsed;
+                }
+            }
+        } catch (_) {}
+
+        try {
             const url = `https://api.quran.com/api/v4/verses/by_page/${pageNumber}?words=true&word_fields=line_number,position,text_uthmani`;
             const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             if (data && data.verses) {
                 state.pageLayoutCache[pageNumber] = data.verses;
+                try {
+                    localStorage.setItem(`mushaf_layout_p${pageNumber}`, JSON.stringify(data.verses));
+                } catch (_) {}
                 return data.verses;
             }
         } catch (e) {
@@ -752,6 +774,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalLines = 15;
         state.ayahSpans = {};
         state.ayahWordsMap = {};
+
+        // Sayfa düzeni önbellekte varsa doğrudan kullan
+        if (!apiVerses && state.pageLayoutCache[state.currentPage]) {
+            apiVerses = state.pageLayoutCache[state.currentPage];
+        }
 
         if (apiVerses && Array.isArray(apiVerses) && apiVerses.length > 0) {
             // 1. KUR'AN-I KERİM RESMİ BASKI 15 SATIR HASSAS KELİME DÜZENİ (Milisaniyelik Tam Eşleme)
@@ -824,7 +851,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
         } else {
-            // 2. YEDEK: Matematiksel Dağılım
+            // 2. YEDEK: Matematiksel Dağılım (15 Satıra Orantılı Yayılım)
             const totalChars = ayahs.reduce((sum, a) => sum + (a.textArabic ? a.textArabic.length : 1), 0);
             const charsPerLine = Math.max(1, totalChars / totalLines);
             let charOffset = 0;
@@ -972,13 +999,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeWordIndex >= 0 && ayahWords.length > 0) {
             const clampedWordIdx = Math.max(0, Math.min(ayahWords.length - 1, activeWordIndex));
             const wordInfo = ayahWords[clampedWordIdx];
-            activeLineIndex = wordInfo.lineIndex;
-            const intraProg = Math.max(0, Math.min(1, activeWordProgress || 0));
-            // Kelime içinde Arapça sağdan sola tecvid akışı:
-            if (wordInfo.startRatio !== undefined && wordInfo.endRatio !== undefined) {
-                lineRatio = wordInfo.startRatio + (intraProg * (wordInfo.endRatio - wordInfo.startRatio));
-            } else {
-                lineRatio = wordInfo.ratio;
+            if (wordInfo) {
+                activeLineIndex = wordInfo.lineIndex;
+                const intraProg = Math.max(0, Math.min(1, activeWordProgress || 0));
+                // Kelime içinde Arapça sağdan sola tecvid akışı:
+                if (wordInfo.startRatio !== undefined && wordInfo.endRatio !== undefined) {
+                    lineRatio = wordInfo.startRatio + (intraProg * (wordInfo.endRatio - wordInfo.startRatio));
+                } else {
+                    lineRatio = wordInfo.ratio;
+                }
             }
         } else {
             // 2. Yedek: Ayet parçaları üzerinden akıcı hesap
@@ -1004,24 +1033,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 activeLineIndex = activeSpan.lineIndex;
                 lineRatio = activeSpan.startRatio + (spanProgress * (activeSpan.endRatio - activeSpan.startRatio));
             } else {
-                const allLines = overlay.querySelectorAll('.ayah-overlay-line');
-                activeLineIndex = Math.max(0, Math.min(allLines.length - 1, ayahIndex));
+                const totalAyahs = (state.pageAyahs && state.pageAyahs.length > 0) ? state.pageAyahs.length : 1;
+                activeLineIndex = Math.min(14, Math.floor((ayahIndex / totalAyahs) * 15));
                 lineRatio = progress;
             }
         }
 
         const targetLine = overlay.querySelector(`.ayah-overlay-line[data-line-index="${activeLineIndex}"]`);
         if (targetLine) {
-            const lineLeft = targetLine.offsetLeft;
-            const lineWidth = targetLine.offsetWidth;
-            const lineTop = targetLine.offsetTop;
-            const lineHeight = targetLine.offsetHeight;
+            const frame = overlay.parentElement;
+            const frameRect = frame ? frame.getBoundingClientRect() : overlay.getBoundingClientRect();
+            const lineRect = targetLine.getBoundingClientRect();
 
-            // 24px üçgen için Arapça sağdan sola doğru piksel pozisyonu:
-            const usableWidth = Math.max(20, lineWidth - 32);
-            const posX = lineLeft + (usableWidth * (1 - lineRatio)) + 4;
-            // Kelimenin hemen altına oturan ibre ucu konumu
-            const posY = lineTop + lineHeight - 14;
+            const lineLeft = lineRect.left - frameRect.left;
+            const lineTop = lineRect.top - frameRect.top;
+            const lineWidth = lineRect.width;
+            const lineHeight = lineRect.height;
+
+            // 20px üçgen için Arapça sağdan sola doğru piksel pozisyonu:
+            const usableWidth = Math.max(20, lineWidth - 20);
+            const posX = lineLeft + (usableWidth * (1 - lineRatio)) - 2;
+            // Ayetin hemen altında, harflerle çakışmayan, net ve estetik mesafeli ibre ucu (satır tabanının hemen altı):
+            const posY = lineTop + (lineHeight * 0.98);
 
             if (lastTrackedLineIndex !== -1 && lastTrackedLineIndex !== activeLineIndex) {
                 pointer.style.transition = 'none';

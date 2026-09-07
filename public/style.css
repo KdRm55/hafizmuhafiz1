@@ -1389,7 +1389,7 @@ body {
     pointer-events: auto;
     display: flex;
     flex-direction: column;
-    padding: 15.5% 25.5% 5.0% 28.5%;
+    padding: 9.6% 13.5% 8.4% 13.5%;
     box-sizing: border-box;
 }
 
@@ -1421,8 +1421,8 @@ body {
     position: absolute;
     top: 0;
     left: 0;
-    width: 24px;
-    height: 28px;
+    width: 18px;
+    height: 20px;
     z-index: 35;
     pointer-events: none;
     display: flex;
@@ -1433,10 +1433,10 @@ body {
 }
 
 .mukabele-tracker-triangle .mukabele-triangle-svg {
-    width: 22px;
-    height: 28px;
+    width: 16px;
+    height: 18px;
     display: block;
-    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.45));
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
 }
 
 /* Hafızlık Ezber / Perdeleme Maskesi */
@@ -1450,7 +1450,7 @@ body {
     pointer-events: none;
     display: flex;
     flex-direction: column;
-    padding: 15.5% 25.5% 5.0% 28.5%;
+    padding: 9.6% 13.5% 8.4% 13.5%;
     box-sizing: border-box;
 }
 
