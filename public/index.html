@@ -533,12 +533,24 @@
                             </div>
 
                             <div class="mushaf-spread-wrapper" id="mushaf-spread-wrapper">
-                                <!-- Sağ Sayfa (Ana Sayfa) -->
+                                <!-- Sol Sayfa (Çift Sayfa: 2, 4, 6... Rahle Modunda Ekranda SOLDA Gösterilir) -->
+                                <div class="mushaf-page-frame" id="frame-page-left" style="display:none;">
+                                    <canvas id="mushaf-diyanet-canvas-left" class="mushaf-canvas-layer" style="display:none;"></canvas>
+                                    <img id="mushaf-image-left" class="mushaf-img-fallback" src="" alt="Sol Mushaf Sayfası" style="display:none;">
+                                    <div id="mushaf-interactive-overlay-left" class="mushaf-interactive-layer"></div>
+                                    <div id="mushaf-mask-overlay-left" class="mushaf-mask-layer" style="display:none;"></div>
+                                    <div class="mushaf-page-tag mushaf-left-page-tag" id="mushaf-left-page-tag">Sayfa 2</div>
+                                </div>
+
+                                <!-- Kitap Cilt Omurgası / Katlanma Çizgisi -->
+                                <div class="mushaf-book-spine" id="mushaf-book-spine" style="display:none;"></div>
+
+                                <!-- Sağ Sayfa (Tek Sayfa: 1, 3, 5... Rahle Modunda SAĞDA, Tek Sayfa Modunda Merkezde) -->
                                 <div class="mushaf-page-frame" id="frame-page-right">
                                     <!-- 1. Katman: Diyanet Resmi Vektörel PDF Canvas'ı -->
                                     <canvas id="mushaf-diyanet-canvas" class="mushaf-canvas-layer"></canvas>
 
-                                    <!-- 2. Katman (İsteğe bağlı): Medine & Tecvidli İmaj Öğesi -->
+                                    <!-- 2. Katman: Medine & Tecvidli / Diyanet WebP İmaj Öğesi -->
                                     <img id="mushaf-image" class="mushaf-img-fallback" src="" alt="Mushaf Baskısı" style="display:none;">
 
                                     <!-- 3. Katman: İnteraktif Ayet Vurgu, Tıklama ve Durak Katmanı -->
@@ -546,15 +558,7 @@
 
                                     <!-- 4. Katman: Hafızlık Ezber / Perdeleme Maskesi (Örtü) -->
                                     <div id="mushaf-mask-overlay" class="mushaf-mask-layer" style="display:none;"></div>
-                                </div>
-
-                                <!-- Sol Sayfa (Çift Sayfa / Rahle Modunda Gösterilir) -->
-                                <div class="mushaf-page-frame" id="frame-page-left" style="display:none;">
-                                    <canvas id="mushaf-diyanet-canvas-left" class="mushaf-canvas-layer" style="display:none;"></canvas>
-                                    <img id="mushaf-image-left" class="mushaf-img-fallback" src="" alt="Sol Mushaf Sayfası" style="display:none;">
-                                    <div id="mushaf-interactive-overlay-left" class="mushaf-interactive-layer"></div>
-                                    <div id="mushaf-mask-overlay-left" class="mushaf-mask-layer" style="display:none;"></div>
-                                    <div class="mushaf-left-page-tag" id="mushaf-left-page-tag">Sayfa 475</div>
+                                    <div class="mushaf-page-tag mushaf-right-page-tag" id="mushaf-right-page-tag" style="display:none;">Sayfa 1</div>
                                 </div>
                             </div>
                         </div>
@@ -1058,11 +1062,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
     <!-- Uygulama Scriptleri -->
-    <script src="quran-data.js?v=24"></script>
-    <script src="quran-pages-db.js?v=24"></script>
-    <script src="hafiz-engine.js?v=24"></script>
-    <script src="audio-engine.js?v=24"></script>
-    <script src="offline-engine.js?v=24"></script>
-    <script src="app.js?v=24"></script>
+    <script src="quran-data.js?v=25"></script>
+    <script src="quran-pages-db.js?v=25"></script>
+    <script src="hafiz-engine.js?v=25"></script>
+    <script src="audio-engine.js?v=25"></script>
+    <script src="offline-engine.js?v=25"></script>
+    <script src="app.js?v=25"></script>
 </body>
 </html>

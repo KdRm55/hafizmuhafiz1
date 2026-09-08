@@ -1312,8 +1312,10 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
-    transition: aspect-ratio 0.3s ease;
+    box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8), 0 10px 40px rgba(0, 0, 0, 0.6);
+    transition: aspect-ratio 0.35s ease;
+    perspective: 2000px;
+    transform-style: preserve-3d;
 }
 
 .mushaf-book-wrapper.spread-mode-active .mushaf-viewport-container {
@@ -1328,6 +1330,51 @@ body {
     width: 100%;
     height: 100%;
     display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: stretch;
+    transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease;
+    transform-origin: center center;
+    backface-visibility: hidden;
+}
+
+/* Sayfa Çevirme Görsel Animasyonu (Realistic Mushaf Page Turn Effect) */
+.mushaf-viewport-container.turn-flip-forward .mushaf-spread-wrapper {
+    animation: mushafPageFlipForward 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.mushaf-viewport-container.turn-flip-backward .mushaf-spread-wrapper {
+    animation: mushafPageFlipBackward 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes mushafPageFlipForward {
+    0% {
+        transform: perspective(2000px) rotateY(0deg) scale(1);
+        filter: brightness(1);
+    }
+    45% {
+        transform: perspective(2000px) rotateY(-7deg) scale(0.985);
+        filter: brightness(0.92) contrast(1.05);
+    }
+    100% {
+        transform: perspective(2000px) rotateY(0deg) scale(1);
+        filter: brightness(1);
+    }
+}
+
+@keyframes mushafPageFlipBackward {
+    0% {
+        transform: perspective(2000px) rotateY(0deg) scale(1);
+        filter: brightness(1);
+    }
+    45% {
+        transform: perspective(2000px) rotateY(7deg) scale(0.985);
+        filter: brightness(0.92) contrast(1.05);
+    }
+    100% {
+        transform: perspective(2000px) rotateY(0deg) scale(1);
+        filter: brightness(1);
+    }
 }
 
 .mushaf-page-frame {
@@ -1335,25 +1382,54 @@ body {
     flex: 1;
     height: 100%;
     overflow: hidden;
+    background: #08140f;
 }
 
 .mushaf-page-frame#frame-page-left {
-    border-right: 1px solid rgba(212, 175, 55, 0.3);
-    box-shadow: 6px 0 20px rgba(0, 0, 0, 0.6);
+    border-right: 1px solid rgba(212, 175, 55, 0.25);
+    box-shadow: inset -15px 0 25px -10px rgba(0, 0, 0, 0.5);
+}
+
+.mushaf-page-frame#frame-page-right {
+    box-shadow: inset 15px 0 25px -10px rgba(0, 0, 0, 0.5);
+}
+
+.mushaf-book-spine {
+    width: 12px;
+    height: 100%;
+    background: linear-gradient(to right,
+        rgba(0, 0, 0, 0.65) 0%,
+        rgba(15, 20, 15, 0.2) 30%,
+        rgba(212, 175, 55, 0.45) 50%,
+        rgba(15, 20, 15, 0.2) 70%,
+        rgba(0, 0, 0, 0.65) 100%
+    );
+    box-shadow: 0 0 16px rgba(0, 0, 0, 0.8), inset 0 0 4px rgba(212, 175, 55, 0.3);
+    z-index: 25;
+    flex-shrink: 0;
+}
+
+.mushaf-page-tag {
+    position: absolute;
+    top: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid var(--border-gold);
+    color: var(--gold-bright);
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 4px;
+    z-index: 20;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 
 .mushaf-left-page-tag {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    background: rgba(0, 0, 0, 0.7);
-    border: 1px solid var(--border-gold);
-    color: var(--gold-bright);
-    font-size: 0.72rem;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 4px;
-    z-index: 20;
+    left: 12px;
+}
+
+.mushaf-right-page-tag {
+    right: 12px;
 }
 
 .mushaf-canvas-layer {

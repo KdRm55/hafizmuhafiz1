@@ -485,29 +485,63 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // 3. Sayfa Verisini Çekme ve İnteraktif Mushaf'ı İnşa Etme
     // ==========================================
+    function getSpreadPages(pageNumber) {
+        const p = Math.max(1, Math.min(604, parseInt(pageNumber, 10) || 1));
+        const rightPage = (p % 2 === 1) ? p : p - 1; // 1, 3, 5, 7, ... (SAĞDA)
+        const leftPage = (rightPage + 1 <= 604) ? rightPage + 1 : null; // 2, 4, 6, 8, ... (SOLDA)
+        return { rightPage, leftPage };
+    }
+
     async function loadPageData(pageNumber) {
+        pageNumber = Math.max(1, Math.min(604, parseInt(pageNumber, 10) || 1));
         state.currentPage = pageNumber;
-        if (badgePageNum) badgePageNum.textContent = `Sayfa ${pageNumber}`;
-        if (mushafPageNumber) mushafPageNumber.textContent = `Sayfa ${pageNumber}`;
 
-        const juzObj = QURAN_DATA.getJuzByPage(pageNumber);
-        if (mushafJuzTitle) mushafJuzTitle.innerHTML = `<i class="fa-solid fa-diamond"></i> ${juzObj.name}`;
-        if (mushafHizbTitle) {
-            const hizbNum = Math.ceil(pageNumber / 10);
-            mushafHizbTitle.textContent = `${hizbNum}. Hizb`;
-        }
+        if (state.isSpreadMode) {
+            const { rightPage, leftPage } = getSpreadPages(pageNumber);
+            const pageText = leftPage ? `Sayfa ${rightPage} - ${leftPage}` : `Sayfa ${rightPage}`;
+            if (badgePageNum) badgePageNum.textContent = pageText;
+            if (mushafPageNumber) mushafPageNumber.textContent = pageText;
 
-        // Sure Başlığı
-        const surah = QURAN_DATA.getSurahByPage ? QURAN_DATA.getSurahByPage(pageNumber) : (QURAN_DATA.surahs.find(s => pageNumber >= s.startPage) || QURAN_DATA.surahs[0]);
-        if (mushafSurahTitle && surah) {
-            mushafSurahTitle.textContent = QURAN_DATA.formatSurahTitle(surah.nameAr, surah.nameTr, surah.id);
+            const juzObj = QURAN_DATA.getJuzByPage(rightPage);
+            if (mushafJuzTitle) mushafJuzTitle.innerHTML = `<i class="fa-solid fa-diamond"></i> ${juzObj.name}`;
+            if (mushafHizbTitle) {
+                const hizbNum = Math.ceil(rightPage / 10);
+                mushafHizbTitle.textContent = `${hizbNum}. Hizb`;
+            }
+
+            const surahR = QURAN_DATA.getSurahByPage ? QURAN_DATA.getSurahByPage(rightPage) : QURAN_DATA.surahs[0];
+            const surahL = leftPage && QURAN_DATA.getSurahByPage ? QURAN_DATA.getSurahByPage(leftPage) : null;
+            if (mushafSurahTitle) {
+                if (surahL && surahL.id !== surahR.id) {
+                    mushafSurahTitle.textContent = `${QURAN_DATA.formatSurahTitle(surahR.nameAr, surahR.nameTr, surahR.id)} — ${QURAN_DATA.formatSurahTitle(surahL.nameAr, surahL.nameTr, surahL.id)}`;
+                } else if (surahR) {
+                    mushafSurahTitle.textContent = QURAN_DATA.formatSurahTitle(surahR.nameAr, surahR.nameTr, surahR.id);
+                }
+            }
+        } else {
+            if (badgePageNum) badgePageNum.textContent = `Sayfa ${pageNumber}`;
+            if (mushafPageNumber) mushafPageNumber.textContent = `Sayfa ${pageNumber}`;
+
+            const juzObj = QURAN_DATA.getJuzByPage(pageNumber);
+            if (mushafJuzTitle) mushafJuzTitle.innerHTML = `<i class="fa-solid fa-diamond"></i> ${juzObj.name}`;
+            if (mushafHizbTitle) {
+                const hizbNum = Math.ceil(pageNumber / 10);
+                mushafHizbTitle.textContent = `${hizbNum}. Hizb`;
+            }
+
+            // Sure Başlığı
+            const surah = QURAN_DATA.getSurahByPage ? QURAN_DATA.getSurahByPage(pageNumber) : (QURAN_DATA.surahs.find(s => pageNumber >= s.startPage) || QURAN_DATA.surahs[0]);
+            if (mushafSurahTitle && surah) {
+                mushafSurahTitle.textContent = QURAN_DATA.formatSurahTitle(surah.nameAr, surah.nameTr, surah.id);
+            }
         }
 
         // 1. Taranmış Mushaf Görseli / Diyanet Resmi PDF Render
         await renderFacsimilePage(pageNumber);
 
         // 2. Ayetleri API'den veya Önbellekten Çekip İnteraktif Katmanı Oluştur
-        await fetchAndRenderMushafPage(pageNumber);
+        const activePageToFetch = state.isSpreadMode ? getSpreadPages(pageNumber).rightPage : pageNumber;
+        await fetchAndRenderMushafPage(activePageToFetch);
     }
 
     let diyanetPdfDoc = null;
@@ -557,47 +591,102 @@ document.addEventListener('DOMContentLoaded', () => {
         // Rahle / Çift Sayfa Görünümü Elemanları
         const frameLeft = framePageLeft || document.getElementById('frame-page-left');
         const imgLeft = document.getElementById('mushaf-image-left');
+        const spine = document.getElementById('mushaf-book-spine');
         const tagLeft = mushafLeftPageTag || document.getElementById('mushaf-left-page-tag');
+        const tagRight = document.getElementById('mushaf-right-page-tag');
 
         if (canvas) canvas.style.display = 'none';
 
-        if (img) {
-            img.style.display = 'block';
-            const targetSrc = QURAN_DATA.getPageImageUrl(pageNumber, facType);
+        if (!state.isSpreadMode) {
+            // TEK SAYFA MODU
+            if (frameLeft) frameLeft.style.display = 'none';
+            if (spine) spine.style.display = 'none';
+            if (tagRight) tagRight.style.display = 'none';
 
-            const onPageImageReady = () => {
-                if (spinner) spinner.style.display = 'none';
-                img.style.opacity = '1';
-                if (state.pageAyahs && state.pageAyahs.length > 0) {
-                    buildDiyanetInteractiveOverlay(state.pageAyahs);
-                }
-            };
+            if (img) {
+                img.style.display = 'block';
+                const targetSrc = QURAN_DATA.getPageImageUrl(pageNumber, facType);
 
-            img.onload = onPageImageReady;
-            img.onerror = () => {
-                img.src = QURAN_DATA.getFallbackPageImageUrl(pageNumber, facType);
-                onPageImageReady();
-            };
+                const onPageImageReady = () => {
+                    if (spinner) spinner.style.display = 'none';
+                    img.style.opacity = '1';
+                    if (state.pageAyahs && state.pageAyahs.length > 0) {
+                        buildDiyanetInteractiveOverlay(state.pageAyahs);
+                    }
+                };
 
-            if (img.getAttribute('src') === targetSrc && img.complete && img.naturalWidth > 0) {
-                onPageImageReady();
-            } else {
-                img.src = targetSrc;
-                if (img.complete && img.naturalWidth > 0) {
+                img.onload = onPageImageReady;
+                img.onerror = () => {
+                    img.src = QURAN_DATA.getFallbackPageImageUrl(pageNumber, facType);
                     onPageImageReady();
+                };
+
+                if (img.getAttribute('src') === targetSrc && img.complete && img.naturalWidth > 0) {
+                    onPageImageReady();
+                } else {
+                    img.src = targetSrc;
+                    if (img.complete && img.naturalWidth > 0) {
+                        onPageImageReady();
+                    }
                 }
             }
-        }
+        } else {
+            // ÇİFT SAYFA / RAHLE MODU (Kur'an-ı Kerim: Sağda Tek Sayfa, Solda Çift Sayfa)
+            const { rightPage, leftPage } = getSpreadPages(pageNumber);
 
-        // Rahle / Çift Sayfa (Spread Mode)
-        if (state.isSpreadMode && frameLeft && imgLeft) {
-            frameLeft.style.display = 'block';
-            const leftPageNum = (pageNumber % 2 === 0) ? (pageNumber + 1 <= 604 ? pageNumber + 1 : pageNumber) : pageNumber;
-            if (tagLeft) tagLeft.textContent = `Sayfa ${leftPageNum}`;
-            imgLeft.style.display = 'block';
-            imgLeft.src = QURAN_DATA.getPageImageUrl(leftPageNum, facType);
-        } else if (frameLeft) {
-            frameLeft.style.display = 'none';
+            // 1. Sol Sayfa (2, 4, 6, 8... Ekranda SOLDA)
+            if (frameLeft && leftPage) {
+                frameLeft.style.display = 'block';
+                if (spine) spine.style.display = 'block';
+                if (tagLeft) {
+                    tagLeft.style.display = 'block';
+                    tagLeft.textContent = `Sayfa ${leftPage}`;
+                }
+                if (imgLeft) {
+                    imgLeft.style.display = 'block';
+                    const leftSrc = QURAN_DATA.getPageImageUrl(leftPage, facType);
+                    imgLeft.onload = () => { imgLeft.style.opacity = '1'; };
+                    imgLeft.onerror = () => { imgLeft.src = QURAN_DATA.getFallbackPageImageUrl(leftPage, facType); };
+                    imgLeft.src = leftSrc;
+                }
+            } else if (frameLeft) {
+                frameLeft.style.display = 'none';
+                if (spine) spine.style.display = 'none';
+            }
+
+            // 2. Sağ Sayfa (1, 3, 5, 7... Ekranda SAĞDA)
+            if (tagRight) {
+                tagRight.style.display = 'block';
+                tagRight.textContent = `Sayfa ${rightPage}`;
+            }
+
+            if (img) {
+                img.style.display = 'block';
+                const rightSrc = QURAN_DATA.getPageImageUrl(rightPage, facType);
+
+                const onRightReady = () => {
+                    if (spinner) spinner.style.display = 'none';
+                    img.style.opacity = '1';
+                    if (state.pageAyahs && state.pageAyahs.length > 0) {
+                        buildDiyanetInteractiveOverlay(state.pageAyahs);
+                    }
+                };
+
+                img.onload = onRightReady;
+                img.onerror = () => {
+                    img.src = QURAN_DATA.getFallbackPageImageUrl(rightPage, facType);
+                    onRightReady();
+                };
+
+                if (img.getAttribute('src') === rightSrc && img.complete && img.naturalWidth > 0) {
+                    onRightReady();
+                } else {
+                    img.src = rightSrc;
+                    if (img.complete && img.naturalWidth > 0) {
+                        onRightReady();
+                    }
+                }
+            }
         }
     }
 
@@ -992,7 +1081,56 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dockSpread) {
             dockSpread.classList.toggle('active', state.isSpreadMode);
         }
-        renderFacsimilePage(state.currentPage);
+
+        // Çift sayfa moduna geçerken daima o formattaki sağ tek sayfayı baz al (1, 3, 5, 7...)
+        if (state.isSpreadMode) {
+            const { rightPage } = getSpreadPages(state.currentPage);
+            state.currentPage = rightPage;
+        }
+        triggerPageTurnAnimation('forward');
+        loadPageData(state.currentPage);
+    }
+
+    function triggerPageTurnAnimation(direction = 'forward') {
+        const viewport = mushafViewportContainer || document.getElementById('mushaf-viewport-container');
+        if (!viewport) return;
+        const animClass = direction === 'forward' ? 'turn-flip-forward' : 'turn-flip-backward';
+        viewport.classList.remove('turn-flip-forward', 'turn-flip-backward');
+        void viewport.offsetWidth; // Force CSS reflow
+        viewport.classList.add(animClass);
+        setTimeout(() => {
+            viewport.classList.remove(animClass);
+        }, 400);
+    }
+
+    function nextPageStep() {
+        if (state.isSpreadMode) {
+            const { rightPage } = getSpreadPages(state.currentPage);
+            if (rightPage + 2 <= 604) {
+                triggerPageTurnAnimation('forward');
+                loadPageData(rightPage + 2);
+            }
+        } else {
+            if (state.currentPage < 604) {
+                triggerPageTurnAnimation('forward');
+                loadPageData(state.currentPage + 1);
+            }
+        }
+    }
+
+    function prevPageStep() {
+        if (state.isSpreadMode) {
+            const { rightPage } = getSpreadPages(state.currentPage);
+            if (rightPage - 2 >= 1) {
+                triggerPageTurnAnimation('backward');
+                loadPageData(rightPage - 2);
+            }
+        } else {
+            if (state.currentPage > 1) {
+                triggerPageTurnAnimation('backward');
+                loadPageData(state.currentPage - 1);
+            }
+        }
     }
 
     function applyMushafZoom(newZoom) {
@@ -1427,12 +1565,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Sayfa Değiştirme
         if (btnPrevPage) {
             btnPrevPage.addEventListener('click', () => {
-                if (state.currentPage > 1) loadPageData(state.currentPage - 1);
+                prevPageStep();
             });
         }
         if (btnNextPage) {
             btnNextPage.addEventListener('click', () => {
-                if (state.currentPage < 604) loadPageData(state.currentPage + 1);
+                nextPageStep();
             });
         }
 
@@ -1751,12 +1889,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Sahne Yan Okları (Floating Book Navigation)
         if (btnStagePrev) {
             btnStagePrev.addEventListener('click', () => {
-                if (state.currentPage > 1) loadPageData(state.currentPage - 1);
+                prevPageStep();
             });
         }
         if (btnStageNext) {
             btnStageNext.addEventListener('click', () => {
-                if (state.currentPage < 604) loadPageData(state.currentPage + 1);
+                nextPageStep();
             });
         }
 
@@ -1808,10 +1946,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (Math.abs(diff) > 80) {
                 if (diff < 0) {
                     // Sola kaydır -> sonraki sayfa
-                    if (state.currentPage < 604) loadPageData(state.currentPage + 1);
+                    nextPageStep();
                 } else {
                     // Sağa kaydır -> önceki sayfa
-                    if (state.currentPage > 1) loadPageData(state.currentPage - 1);
+                    prevPageStep();
                 }
             }
         }, { passive: true });
@@ -1839,10 +1977,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.audioEngine.togglePlay();
             } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
                 e.preventDefault();
-                if (state.currentPage < 604) loadPageData(state.currentPage + 1);
+                nextPageStep();
             } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
                 e.preventDefault();
-                if (state.currentPage > 1) loadPageData(state.currentPage - 1);
+                prevPageStep();
             } else if (e.code === 'ArrowDown' || e.code === 'KeyK') {
                 e.preventDefault();
                 window.audioEngine.nextAyah();
