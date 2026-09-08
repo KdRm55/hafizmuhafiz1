@@ -107,6 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const containerAyahView = document.getElementById('container-ayah-view');
 
     const mushafScaleWrapper = document.getElementById('mushaf-scale-wrapper');
+    const mushafViewportContainer = document.getElementById('mushaf-viewport-container');
     const mushafJuzTitle = document.getElementById('mushaf-juz-title');
     const mushafHizbTitle = document.getElementById('mushaf-hizb-title');
     const mushafSurahTitle = document.getElementById('mushaf-surah-title');
@@ -646,8 +647,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     imgLeft.style.display = 'block';
                     const leftSrc = QURAN_DATA.getPageImageUrl(leftPage, facType);
                     imgLeft.onload = () => { imgLeft.style.opacity = '1'; };
-                    imgLeft.onerror = () => { imgLeft.src = QURAN_DATA.getFallbackPageImageUrl(leftPage, facType); };
+                    imgLeft.onerror = () => {
+                        imgLeft.src = QURAN_DATA.getFallbackPageImageUrl(leftPage, facType);
+                        imgLeft.style.opacity = '1';
+                    };
                     imgLeft.src = leftSrc;
+                    if (imgLeft.complete && imgLeft.naturalWidth > 0) {
+                        imgLeft.style.opacity = '1';
+                    }
                 }
             } else if (frameLeft) {
                 frameLeft.style.display = 'none';
@@ -1087,8 +1094,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const { rightPage } = getSpreadPages(state.currentPage);
             state.currentPage = rightPage;
         }
-        triggerPageTurnAnimation('forward');
         loadPageData(state.currentPage);
+        triggerPageTurnAnimation('forward');
     }
 
     function triggerPageTurnAnimation(direction = 'forward') {
