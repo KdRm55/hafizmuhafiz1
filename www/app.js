@@ -14,6 +14,13 @@ document.addEventListener('DOMContentLoaded', () => {
         zoomLevel: 100,       // 80% .. 150%
         mushafZoom: 1.0,      // Mushaf viewport scale 0.8 .. 1.4
         isAudioTrackerActive: true, // Canlı Ses Takip İbresi
+        showAyahHighlight: localStorage.getItem('hafiz_show_ayah_highlight') !== 'false', // Okunan Ayet Vurgusu (Tercihe bağlı)
+        highlightStyle: localStorage.getItem('hafiz_highlight_style') || 'glow', // 'glow', 'spotlight'
+        haslamaTimer: {
+            intervalId: null,
+            elapsedSeconds: 0,
+            isRunning: false
+        },
         isSpreadMode: false,  // Rahle / Çift Sayfa Görünümü
         maskMode: 'off',      // 'off', 'full', 'peek'
         paperTheme: 'night',  // 'night', 'sepia', 'cream'
@@ -123,6 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Floating Tool Dock & Spread Elemanları
     const mushafFloatingDock = document.getElementById('mushaf-floating-dock');
     const dockBtnMask = document.getElementById('dock-btn-mask');
+    const dockBtnAyahHighlight = document.getElementById('dock-btn-ayah-highlight');
     const dockBtnSpread = document.getElementById('dock-btn-spread');
     const dockBtnZoomIn = document.getElementById('dock-btn-zoom-in');
     const dockBtnZoomOut = document.getElementById('dock-btn-zoom-out');
@@ -139,7 +147,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const activeAyahBanner = document.getElementById('active-ayah-banner');
     const activeAyahRef = document.getElementById('active-ayah-ref');
     const activeAyahMeal = document.getElementById('active-ayah-meal');
+    const btnToggleAyahHighlight = document.getElementById('btn-toggle-ayah-highlight');
     const btnBannerMealDrawer = document.getElementById('btn-banner-meal-drawer');
+
+    // Haslama İnteraktif Kronometre Elemanları
+    const haslamaTimerBadge = document.getElementById('haslama-timer-badge');
+    const haslamaTimerDisplay = document.getElementById('haslama-timer-display');
+    const btnHaslamaTimerToggle = document.getElementById('btn-haslama-timer-toggle');
+    const haslamaTimerIcon = document.getElementById('haslama-timer-icon');
+    const haslamaTimerBtnText = document.getElementById('haslama-timer-btn-text');
 
     const btnPrevPage = document.getElementById('btn-prev-page');
     const btnNextPage = document.getElementById('btn-next-page');
@@ -336,6 +352,11 @@ document.addEventListener('DOMContentLoaded', () => {
         bindEvents();
         setupAudioEngineCallbacks();
         setMushafFont(state.mushafFont);
+        updateAyahHighlightUI();
+        initKeyboardShortcuts();
+        if (window.audioEngine) {
+            window.audioEngine.setReciter('shuraym');
+        }
         if (headerReciterName && window.audioEngine && window.audioEngine.currentReciter) {
             headerReciterName.textContent = window.audioEngine.currentReciter.name.replace(/\s*\(.*?\)\s*/g, '');
         }
@@ -1149,16 +1170,209 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function toggleAyahHighlight(forceState = null) {
+        if (forceState !== null) {
+            state.showAyahHighlight = !!forceState;
+        } else {
+            state.showAyahHighlight = !state.showAyahHighlight;
+        }
+        try {
+            localStorage.setItem('hafiz_show_ayah_highlight', state.showAyahHighlight ? 'true' : 'false');
+        } catch (_) {}
+
+        updateAyahHighlightUI();
+        const curIdx = window.audioEngine ? (window.audioEngine.currentAyahIndex || 0) : 0;
+        highlightActiveAyah(curIdx);
+    }
+
+    function updateAyahHighlightUI() {
+        const stage = document.getElementById('container-mushaf-studio');
+        if (stage) {
+            stage.classList.toggle('show-ayah-highlight', !!state.showAyahHighlight);
+        }
+        if (dockBtnAyahHighlight) {
+            dockBtnAyahHighlight.classList.toggle('active', !!state.showAyahHighlight);
+            const tooltip = dockBtnAyahHighlight.querySelector('.dock-tooltip');
+            if (tooltip) {
+                tooltip.textContent = state.showAyahHighlight ? 'Okunan Yeri Göster (Açık)' : 'Okunan Yeri Göster (Kapalı)';
+            }
+        }
+        if (btnToggleAyahHighlight) {
+            btnToggleAyahHighlight.classList.toggle('active', !!state.showAyahHighlight);
+            btnToggleAyahHighlight.title = state.showAyahHighlight 
+                ? 'Okunan Ayet Vurgusu: Açık (Kapatmak için tıkla / H)' 
+                : 'Okunan Ayet Vurgusu: Kapalı (Açmak için tıkla / H)';
+        }
+    }
+
     function highlightActiveAyah(index) {
         if (state.pageAyahs && state.pageAyahs[index]) {
             updateActiveAyahBanner(state.pageAyahs[index]);
         }
+
+        // 15 satırlık Diyanet Mushaf katmanlarında okunan ayetin satırlarını canlı güncelle
+        const overlays = [
+            mushafInteractiveOverlay || document.getElementById('mushaf-interactive-overlay'),
+            mushafInteractiveOverlayLeft || document.getElementById('mushaf-interactive-overlay-left')
+        ].filter(Boolean);
+
+        const activeLineIndices = (state.ayahSpans && state.ayahSpans[index])
+            ? state.ayahSpans[index].map(s => s.lineIndex)
+            : [];
+
+        overlays.forEach(overlay => {
+            const lines = overlay.querySelectorAll('.ayah-overlay-line');
+            lines.forEach(line => {
+                const aIdx = parseInt(line.dataset.ayahIndex, 10);
+                const lIdx = parseInt(line.dataset.lineIndex, 10);
+                const isMatch = (aIdx === index) || (activeLineIndices.length > 0 && activeLineIndices.includes(lIdx));
+
+                if (state.showAyahHighlight && isMatch) {
+                    line.classList.add('active-reading');
+                } else {
+                    line.classList.remove('active-reading');
+                }
+            });
+        });
+
         updateMukabeleTracker(index, 0, true);
 
         // Ezber maskesi aktifse çalan ayeti otomatik aç
         if (state.isHafizMaskActive) {
             revealAyahMask(index);
         }
+    }
+
+    // ==========================================================================
+    // Haslama İnteraktif Kronometre ve Hız Takip Motoru
+    // ==========================================================================
+    function toggleHaslamaTimer() {
+        if (state.haslamaTimer.isRunning) {
+            stopHaslamaTimer();
+        } else {
+            startHaslamaTimer();
+        }
+    }
+
+    function startHaslamaTimer() {
+        if (state.haslamaTimer.isRunning) return;
+        state.haslamaTimer.isRunning = true;
+        if (haslamaTimerIcon) haslamaTimerIcon.className = 'fa-solid fa-pause';
+        if (haslamaTimerBtnText) haslamaTimerBtnText.textContent = 'Duraklat';
+
+        state.haslamaTimer.intervalId = setInterval(() => {
+            state.haslamaTimer.elapsedSeconds++;
+            renderHaslamaTimer();
+        }, 1000);
+    }
+
+    function stopHaslamaTimer() {
+        state.haslamaTimer.isRunning = false;
+        if (state.haslamaTimer.intervalId) {
+            clearInterval(state.haslamaTimer.intervalId);
+            state.haslamaTimer.intervalId = null;
+        }
+        if (haslamaTimerIcon) haslamaTimerIcon.className = 'fa-solid fa-play';
+        if (haslamaTimerBtnText) haslamaTimerBtnText.textContent = 'Devam';
+    }
+
+    function resetHaslamaTimer() {
+        stopHaslamaTimer();
+        state.haslamaTimer.elapsedSeconds = 0;
+        renderHaslamaTimer();
+        if (haslamaTimerBtnText) haslamaTimerBtnText.textContent = 'Başlat';
+    }
+
+    function renderHaslamaTimer() {
+        if (!haslamaTimerDisplay) return;
+        const total = state.haslamaTimer.elapsedSeconds;
+        const mins = Math.floor(total / 60);
+        const secs = total % 60;
+        haslamaTimerDisplay.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    // ==========================================================================
+    // İnteraktif Okuma & Klavye / Dokunma Navigasyonu (Hafız Temposu)
+    // ==========================================================================
+    function stepAyah(delta) {
+        if (!state.pageAyahs || state.pageAyahs.length === 0) return;
+        const curIdx = window.audioEngine ? (window.audioEngine.currentAyahIndex || 0) : 0;
+        let newIdx = curIdx + delta;
+        if (newIdx < 0) {
+            newIdx = 0;
+        } else if (newIdx >= state.pageAyahs.length) {
+            // Sayfa sonuna gelindiğinde
+            if (state.currentMode === 'chain-has') {
+                handlePageQueueFinished();
+                return;
+            }
+            newIdx = state.pageAyahs.length - 1;
+        }
+
+        if (window.audioEngine) {
+            window.audioEngine.currentAyahIndex = newIdx;
+            if (window.audioEngine.isPlaying) {
+                window.audioEngine.jumpToAyah(newIdx, true);
+            }
+        }
+        highlightActiveAyah(newIdx);
+    }
+
+    function initKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            const tag = (e.target.tagName || '').toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) {
+                return;
+            }
+
+            // H veya V: Okunan Ayet Vurgusunu Aç / Kapat
+            if (e.key === 'h' || e.key === 'H' || e.key === 'v' || e.key === 'V') {
+                e.preventDefault();
+                toggleAyahHighlight();
+                return;
+            }
+
+            // Sol Ok / A: Önceki Sayfa
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+                e.preventDefault();
+                prevPageStep();
+                return;
+            }
+
+            // Sağ Ok / D: Sonraki Sayfa
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                e.preventDefault();
+                nextPageStep();
+                return;
+            }
+
+            // Aşağı Ok / N: Sıradaki Ayet (İnteraktif İlerleme)
+            if (e.key === 'ArrowDown' || e.key === 'n' || e.key === 'N') {
+                e.preventDefault();
+                stepAyah(1);
+                return;
+            }
+
+            // Yukarı Ok / P: Önceki Ayet (İnteraktif İlerleme)
+            if (e.key === 'ArrowUp' || e.key === 'p' || e.key === 'P') {
+                e.preventDefault();
+                stepAyah(-1);
+                return;
+            }
+
+            // Boşluk (Space): Çal / Duraklat veya Kendi Okumasında Sonraki Ayete Geç
+            if (e.key === ' ' || e.code === 'Space') {
+                e.preventDefault();
+                if (window.audioEngine) {
+                    if (window.audioEngine.isPlaying) {
+                        window.audioEngine.pause();
+                    } else {
+                        stepAyah(1);
+                    }
+                }
+                return;
+            }
+        });
     }
 
     function highlightAyahGroup(startIdx, endIdx) {
@@ -1737,6 +1951,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btnToggleHafizMask) {
             btnToggleHafizMask.addEventListener('click', () => toggleHafizMask());
         }
+        if (dockBtnAyahHighlight) {
+            dockBtnAyahHighlight.addEventListener('click', () => toggleAyahHighlight());
+        }
+        if (btnToggleAyahHighlight) {
+            btnToggleAyahHighlight.addEventListener('click', () => toggleAyahHighlight());
+        }
+        if (btnHaslamaTimerToggle) {
+            btnHaslamaTimerToggle.addEventListener('click', () => toggleHaslamaTimer());
+        }
         if (dockBtnSpread) {
             dockBtnSpread.addEventListener('click', () => toggleSpreadMode());
         }
@@ -2153,6 +2376,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modeChainHas) modeChainHas.classList.remove('active');
 
         if (mode === 'ham') {
+            stopHaslamaTimer();
             if (modeHam) modeHam.classList.add('active');
             if (cardStandardLesson) cardStandardLesson.style.display = 'flex';
             if (panelChainHaslama) panelChainHaslama.style.display = 'none';
@@ -2161,6 +2385,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (window.audioEngine) window.audioEngine.setRepeats(5);
             loadPageData(state.currentPage);
         } else if (mode === 'chain-has') {
+            resetHaslamaTimer();
             if (modeChainHas) modeChainHas.classList.add('active');
             if (cardStandardLesson) cardStandardLesson.style.display = 'none';
             if (panelChainHaslama) panelChainHaslama.style.display = 'flex';

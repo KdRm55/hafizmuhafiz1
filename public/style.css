@@ -1474,22 +1474,54 @@ body {
     width: 100%;
     position: relative;
     cursor: pointer;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    outline: none !important;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    outline: none;
     margin: 0;
+    transition: background 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
 }
 
 .ayah-overlay-line:hover {
-    background: transparent !important;
+    background: rgba(212, 175, 55, 0.08);
+    border-radius: 4px;
 }
 
+/* Okunan Ayet Vurgusu: Varsayılan (Vurgu Kapalıyken veya Saydam Mod) */
 .ayah-overlay-line.active-reading {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    outline: none !important;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    outline: none;
+}
+
+/* ==========================================================================
+   İnteraktif Okunan Ayet Vurgusu (Kullanıcı Tercihine Bağlı - Hafız Nuru)
+   ========================================================================== */
+.show-ayah-highlight .ayah-overlay-line.active-reading {
+    background: linear-gradient(90deg, rgba(212, 175, 55, 0.05) 0%, rgba(212, 175, 55, 0.22) 12%, rgba(212, 175, 55, 0.26) 50%, rgba(212, 175, 55, 0.22) 88%, rgba(212, 175, 55, 0.05) 100%) !important;
+    border-radius: 5px;
+    box-shadow: 0 0 14px rgba(212, 175, 55, 0.32), inset 0 0 10px rgba(212, 175, 55, 0.16) !important;
+    border-left: 3.5px solid #d4af37 !important;
+    border-right: 3.5px solid #d4af37 !important;
+    animation: pulseAyahHighlight 3s infinite ease-in-out;
+}
+
+@keyframes pulseAyahHighlight {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(212, 175, 55, 0.24), inset 0 0 6px rgba(212, 175, 55, 0.12);
+        background-color: rgba(212, 175, 55, 0.18);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(212, 175, 55, 0.45), inset 0 0 12px rgba(212, 175, 55, 0.24);
+        background-color: rgba(212, 175, 55, 0.28);
+    }
+}
+
+/* Spot Modu Tercihi: Okunan Yer Dışındaki Satırları Hafif Dindir */
+.show-ayah-highlight.highlight-mode-spotlight .ayah-overlay-line:not(.active-reading) {
+    opacity: 0.52;
+    transition: opacity 0.3s ease;
 }
 
 
@@ -3076,6 +3108,105 @@ kbd {
     from { opacity: 0; transform: scale(0.99); }
     to { opacity: 1; transform: scale(1); }
 }
+
+/* ==========================================================================
+   Aktif Okunan Ayet Şeridi & Diyanet Meali Şeridi
+   ========================================================================== */
+.active-ayah-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: rgba(6, 20, 14, 0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-gold);
+    border-radius: var(--radius-lg);
+    padding: 10px 16px;
+    margin-top: 14px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+}
+
+.active-ayah-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.ayah-ref-pill {
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.22), rgba(212, 175, 55, 0.06));
+    border: 1px solid var(--border-gold);
+    color: var(--gold-bright);
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ayah-mode-pill {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: var(--emerald-primary);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: var(--radius-full);
+}
+
+.active-ayah-meal-text {
+    flex: 1;
+    font-size: 0.88rem;
+    color: var(--text-main);
+    line-height: 1.45;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.btn-banner-action {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.btn-banner-action:hover, .btn-banner-action.active {
+    background: rgba(212, 175, 55, 0.18);
+    border-color: var(--border-gold);
+    color: var(--gold-bright);
+}
+
+/* Haslama İnteraktif Kronometresi */
+.haslama-timer-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(212, 175, 55, 0.12);
+    border: 1px solid var(--border-gold);
+    border-radius: var(--radius-full);
+    padding: 4px 12px;
+    color: var(--gold-bright);
+    font-family: monospace, sans-serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
 
 
 

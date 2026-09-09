@@ -265,6 +265,12 @@
                         <button id="btn-open-chain-list" class="btn-header gold-btn btn-sm" title="Haslama zincirindeki 30 cüzün listesi">
                             <i class="fa-solid fa-list-ol"></i> <span>30 Cüz Listesi</span>
                         </button>
+                        <div class="haslama-timer-box" id="haslama-timer-badge" title="Sayfa Haslama Süresi (Kronometre)">
+                            <i class="fa-solid fa-stopwatch"></i> <span id="haslama-timer-display">00:00</span>
+                        </div>
+                        <button id="btn-haslama-timer-toggle" class="btn-header gold-btn btn-sm" title="Haslama Süresini Başlat / Duraklat">
+                            <i class="fa-solid fa-play" id="haslama-timer-icon"></i> <span id="haslama-timer-btn-text">Başlat</span>
+                        </button>
                     </div>
                 </div>
 
@@ -482,6 +488,10 @@
                         <i class="fa-solid fa-eye-slash"></i>
                         <span class="dock-tooltip">Ezber Perdesi</span>
                     </button>
+                    <button id="dock-btn-ayah-highlight" class="dock-btn active" title="Okunan Ayet Vurgusu (Aç/Kapat - H Tuşu)">
+                        <i class="fa-solid fa-highlighter"></i>
+                        <span class="dock-tooltip">Okunan Yeri Göster</span>
+                    </button>
                     <button id="dock-btn-spread" class="dock-btn" title="Rahle / Çift Sayfa Görünümü">
                         <i class="fa-solid fa-book-open"></i>
                         <span class="dock-tooltip">Çift Sayfa (Rahle)</span>
@@ -572,6 +582,9 @@
                             <div class="active-ayah-meal-text" id="active-ayah-meal">
                                 Şüphesiz o kıyamet saati kesinlikle gelecektir; onda hiçbir şüphe yoktur. Fakat insanların çoğu inanmazlar.
                             </div>
+                            <button id="btn-toggle-ayah-highlight" class="btn-banner-action active" title="Okunan Ayet Vurgusunu Aç/Kapat (H Tuşu)">
+                                <i class="fa-solid fa-highlighter"></i> <span>Ayet Takibi</span>
+                            </button>
                             <button id="btn-banner-meal-drawer" class="btn-banner-action" title="Tüm Sayfanın Mealini Aç">
                                 <i class="fa-solid fa-book-open"></i> <span>Tüm Mealler</span>
                             </button>

@@ -115,7 +115,7 @@ class AudioEngine {
             }
         ];
 
-        this.currentReciter = this.reciters[0];
+        this.currentReciter = this.reciters.find(r => r.id === 'shuraym') || this.reciters[0];
         this.currentAyahIndex = 0;
         this.ayahQueue = [];
         this.currentRepeatCount = 1;
